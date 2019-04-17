@@ -1,0 +1,12 @@
+<body onload="myPopup('map.html', 'Map', 500, 500, 0, 0)">
+    <script>
+function myPopup(url, windowname, w, h, x, y)
+{
+    window.open(url, windowname, "resizable=no, toolbar=no, scrollbars=no, menubar=no, status=no, directories=no, width=" + w + ", height=" + h + ", left=" + x + ", top=" + y);
+}
+</script>
+
+<button onclick="myPopup('map.html', 'Map', 600, 600, 0, 0)">Map</button>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+<launch>
+    <node name="map_ui" pkg="ros_web_map" type="mapserver.py"
+            args="$(find ros_web_map)/webui/map/openmap.html" />
+</launch>

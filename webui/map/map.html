@@ -1,0 +1,146 @@
+<html>
+<head>
+    <title>Leaflet Realtime</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
+    <style>
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+        }
+
+        .floaty {
+            top:0;
+            right:10;
+            position:absolute;
+            z-index: 9999
+        }
+    </style>
+    <script>
+        function toggleFollow()
+{
+    followView = !followView;
+    if (followView)
+    {
+        document.getElementById('follow-button').innerHTML = 'Unfollow'
+    }
+    else
+    {
+        document.getElementById('follow-button').innerHTML = 'Follow';
+    }
+}
+    </script>
+</head>
+<body>
+    <div id="map"></div>
+
+    <button class="floaty" style="top:10;" id="follow-button" onclick="toggleFollow()">Follow</button>
+    <button class="floaty" style="top:40;" onclick="followZoom+=1">Z+</button>
+    <button class="floaty" style="top:70;" onclick="followZoom-=1">Z-</button>
+    <button class="floaty" style="top:100" id="storage" disabled></button>
+
+    <div id="total"></div>
+    <div id="progress"></div>
+    <div id="remove_tiles"></div>
+
+
+    <script src="leaflet/leaflet.js"></script>
+    <script src="deps/localForage-1.5.2/dist/localforage.min.js"></script>
+    <script src="deps/leaflet.offline-0.1.0/dist/leaflet.offline.min.js" type="text/javascript"></script>
+    <script src="deps/leaflet-realtime/dist/leaflet-realtime.min.js"></script>
+    <script>
+
+        var map = L.map('map'),
+            realtime = L.realtime('http://localhost:9000', {
+                interval: 500,
+                pointToLayer: function (feature, latlng) {
+                    var options = {
+                        radius: feature.properties.radius || 7,
+                        fillColor: feature.properties.fillColor || '#ccc',
+                        color: feature.properties.color || '#000',
+                        fillOpacity: feature.properties.fillOpacity || 0.8,
+                        weight: feature.properties.weight || 1,
+                        opacity: feature.properties.opacity || 1
+                    }
+                    return L.circleMarker(latlng, options);
+                },
+                getFeatureId: function(featureData){
+                    return featureData.properties.mmsi;
+                }
+            }).addTo(map);
+
+            var baseLayer =  L.tileLayer.offline('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+                  {
+                    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                  }
+            ).addTo(map);
+
+            //add buttons to save tiles in area viewed
+            var control = L.control.savetiles(baseLayer, {
+                //'zoomlevels': [13, 20], //optional zoomlevels to save, default current zoomlevel
+                'confirm': function(layer, succescallback) {
+                    if (window.confirm("Save " + layer._tilesforSave.length)) {
+                        succescallback();
+                    }
+                },
+                'confirmRemoval': function(layer, successCallback) {
+                    if (window.confirm("Remove all the tiles?")) {
+                        successCallback();
+                    }
+                },
+                //'saveText': '<i class="fa fa-download" aria-hidden="true" title="Save tiles"></i>',
+                //'rmText': '<i class="fa fa-trash" aria-hidden="true"  title="Remove tiles"></i>'
+                'saveText': '&#x1f4be;', //floppy
+                'rmText': '&#x1F5D1' //wastebasket
+            });
+            control.addTo(map);
+            document.getElementById("remove_tiles").addEventListener('click',function(e) {
+              control._rmTiles();
+            });
+            baseLayer.on('storagesize', function(e) {
+                document.getElementById('storage').innerHTML = e.storagesize;
+            })
+            //events while saving a tile layer
+            var progress;
+            baseLayer.on('savestart', function(e) {
+                progress = 0;
+                document.getElementById("total").innerHTML = e._tilesforSave.length;
+            });
+            baseLayer.on('savetileend', function(e) {
+                progress++;
+                var s = document.getElementById('storage').innerHTML;
+                var out = '';
+                if (s.includes(')')) {
+                  s = s.split(')')[1];
+                }
+                document.getElementById('storage').innerHTML = '(' + progress + ') ' + s;
+
+            });
+            baseLayer.on('loadend', function(e) {
+                alert("Saved all tiles");
+            });
+            baseLayer.on('tilesremoved', function(e) {
+                alert("Removed all tiles");
+            });
+
+// Old display code
+//        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+//            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+//        }).addTo(map);
+
+        var followView = false;
+        var followZoom = 15;
+        realtime.on('update', function() {
+            if (followView) {
+                map.fitBounds(realtime.getBounds(), {maxZoom: followZoom});
+            }
+        });
+
+
+
+    </script>
+</body>
+</html>
